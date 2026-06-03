@@ -1,146 +1,215 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reprodutor Responsivo Protegido</title>
-    <!-- Tailwind CSS para o design da tela de ajuda/boas-vindas -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Player iFrame Dinâmico</title>
     <style>
-        /* Estilos para garantir que o iframe ocupe 100% da tela real sem barras de rolagem indesejadas */
-        html, body {
+        /* Reset básico e variáveis de cores */
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #0a0f1d;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-secondary: #94a3b8;
+            --accent-color: #00d2ff; /* Azul neon */
+            --accent-hover: #00a8cc;
+        }
+
+        body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #0b0f19;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
+
+        /* Container do iFrame (ocupa tela cheia quando ativo) */
         .iframe-container {
-            position: absolute;
-            top: 0;
-            left: 0;
+            display: none;
             width: 100%;
             height: 100%;
-            z-index: 10;
-            display: none; /* Oculto por padrão até validar os parâmetros */
+            position: relative;
         }
+
         iframe {
             width: 100%;
             height: 100%;
             border: none;
+            background-color: #000;
+        }
+
+        /* Painel de configuração quando faltam parâmetros */
+        .setup-container {
+            display: none;
+            width: 100%;
+            max-width: 420px;
+            padding: 32px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .setup-container h2 {
+            color: var(--text-main);
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .setup-container p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+            line-height: 1.4;
+        }
+
+        /* Grupos do Formulário */
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.15);
+        }
+
+        /* Botão estilizado */
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 8px;
+            color: #020617;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
         }
     </style>
 </head>
-<body class="text-slate-200 flex flex-col items-center justify-center min-h-screen p-4">
+<body>
 
-    <!-- Container do iFrame (Ocupa a tela cheia se os parâmetros existirem) -->
-    <div id="iframeContainer" class="iframe-container">
-        <!-- 
-          O atributo 'sandbox' com os valores abaixo permite que o player funcione, 
-          mas BLOQUEIA redirecionamentos da página principal (allow-top-navigation foi omitido de propósito).
-          Também bloqueia popups indesejados de abas novas (allow-popups foi omitido).
-        -->
-        <iframe 
-            id="myIframe" 
-            sandbox="allow-scripts opacity allow-same-origin allow-forms allow-presentation"
-            allowfullscreen 
-            allow="autoplay; encrypted-media; picture-in-picture">
-        </iframe>
+    <div class="iframe-container" id="player-screen">
+        <iframe id="video-player" allowfullscreen allow="autoplay; encrypted-media"></iframe>
     </div>
 
-    <!-- Interface Amigável (Exibida apenas se faltarem parâmetros na URL) -->
-    <div id="setupInterface" class="max-w-xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl relative z-20 hidden">
-        <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/10 text-blue-400 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-                </svg>
+    <div class="setup-container" id="setup-screen">
+        <h2>Carregar Conteúdo</h2>
+        <p>Insira os dados abaixo para gerar o player dinamicamente.</p>
+        
+        <form id="setup-form" onsubmit="gerarUrl(event)">
+            <div class="form-group">
+                <label for="tipo">Tipo de Conteúdo</label>
+                <select id="tipo" required>
+                    <option value="" disabled selected>Selecione o tipo...</option>
+                    <option value="filme">Filme</option>
+                    <option value="serie">Série</option>
+                    <option value="anime">Anime</option>
+                </select>
             </div>
-            <h1 class="text-2xl font-bold text-white mb-2">Reprodutor Seguro Ativo</h1>
-            <p class="text-slate-400 text-sm">Proteção contra redirecionamentos, popups invasivos e anúncios forçados ativada.</p>
-        </div>
 
-        <!-- Instruções de Uso -->
-        <div class="bg-slate-950 rounded-xl p-4 mb-6 border border-slate-800 text-xs md:text-sm">
-            <span class="text-blue-400 font-semibold block mb-1">Como usar diretamente na URL:</span>
-            <code id="exampleUrl" class="text-emerald-400 break-all select-all block bg-black/40 p-2 rounded mt-1 font-mono">
-                https://seusite.com/?tipo=player&id=9999
-            </code>
-        </div>
+            <div class="form-group">
+                <label for="id">ID do Conteúdo</label>
+                <input type="text" id="id" placeholder="Ex: 12345" required autocomplete="off">
+            </div>
 
-        <!-- Formulário de Teste Local -->
-        <div class="space-y-4">
-            <div>
-                <label for="inputTipo" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tipo (tipo)</label>
-                <input type="text" id="inputTipo" placeholder="Ex: player, embed, video" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors">
-            </div>
-            <div>
-                <label for="inputId" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">ID (id)</label>
-                <input type="text" id="inputId" placeholder="Ex: 12345" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors">
-            </div>
-            <button id="btnCarregar" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-4 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-2">
-                Carregar iFrame agora
-            </button>
-        </div>
+            <button type="submit" class="btn-submit">Assistir Agora</button>
+        </form>
     </div>
 
     <script>
-        // Função principal que lê os parâmetros e configura o iframe
-        function carregarIframe() {
-            // Obtém os parâmetros da query string da URL atual (?tipo=XXX&id=YYY)
-            const params = new URLSearchParams(window.location.search);
-            const tipo = params.get('tipo');
-            const id = params.get('id');
+        function verificarParametros() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tipo = urlParams.get('tipo');
+            const id = urlParams.get('id');
 
-            const iframeContainer = document.getElementById('iframeContainer');
-            const setupInterface = document.getElementById('setupInterface');
-            const myIframe = document.getElementById('myIframe');
+            const playerScreen = document.getElementById('player-screen');
+            const setupScreen = document.getElementById('setup-screen');
+            const iframe = document.getElementById('video-player');
 
             if (tipo && id) {
-                // Monta a URL final com base nos parâmetros recebidos
-                const urlIframe = `https://myembed.biz/${encodeURIComponent(tipo)}/${encodeURIComponent(id)}`;
-                
-                // Define o source do iframe e o exibe em tela cheia
-                myIframe.src = urlIframe;
-                iframeContainer.style.display = 'block';
-                setupInterface.style.display = 'none';
+                // Se existirem os parâmetros, monta e carrega o iFrame
+                iframe.src = `https://superflixapi.fit/${tipo}/${id}`;
+                playerScreen.style.display = 'block';
+                setupScreen.style.display = 'none';
             } else {
-                // Se faltarem parâmetros, configura a interface de demonstração
-                iframeContainer.style.display = 'none';
-                setupInterface.style.display = 'block';
-
-                // Atualiza o exemplo com a URL atual do visitante
-                const currentOrigin = window.location.origin + window.location.pathname;
-                document.getElementById('exampleUrl').innerText = `${currentOrigin}?tipo=exemplo&id=12345`;
+                // Se faltar algum, exibe o formulário de configuração
+                playerScreen.style.display = 'none';
+                setupScreen.style.display = 'block';
             }
         }
 
-        // Evento do botão para testar os parâmetros direto pela interface
-        document.getElementById('btnCarregar').addEventListener('click', function() {
-            const tipo = document.getElementById('inputTipo').value.trim();
-            const id = document.getElementById('inputId').value.trim();
+        function gerarUrl(event) {
+            event.preventDefault(); // Evita o recarregamento padrão do formulário
 
-            if (tipo && id) {
-                // Redireciona a página para ela mesma adicionando os parâmetros na URL
-                const novaUrl = `${window.location.pathname}?tipo=${encodeURIComponent(tipo)}&id=${encodeURIComponent(id)}`;
-                window.location.href = novaUrl;
-            } else {
-                // Mensagem customizada na própria tela (evitando popups nativos de alert que quebram o fluxo)
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'text-red-400 text-xs mt-2 text-center';
-                errorDiv.innerText = 'Preencha todos os campos antes de continuar!';
-                if (!document.querySelector('.text-red-400')) {
-                    document.getElementById('btnCarregar').after(errorDiv);
-                    setTimeout(() => errorDiv.remove(), 3000);
-                }
+            const tipoValue = document.getElementById('tipo').value;
+            const idValue = document.getElementById('id').value.trim();
+
+            if (tipoValue && idValue) {
+                // Modifica a URL do navegador inserindo os parâmetros sem recarregar do zero
+                const novaUrl = `${window.location.pathname}?tipo=${encodeURIComponent(tipoValue)}&id=${encodeURIComponent(idValue)}`;
+                window.history.pushState({}, '', novaUrl);
+
+                // Executa a verificação novamente para carregar o player imediatamente
+                verificarParametros();
             }
-        });
+        }
 
-        // Executa a validação assim que o DOM estiver pronto
-        window.onload = carregarIframe;
+        // Executa a checagem ao abrir a página
+        window.onload = verificarParametros;
     </script>
 </body>
 </html>
